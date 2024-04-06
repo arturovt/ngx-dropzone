@@ -2,7 +2,6 @@
  * Public API Surface of ngx-dropzone
  */
 
-export * from './lib/ngx-dropzone.module';
 export * from './lib/ngx-dropzone-label.directive';
 export * from './lib/ngx-dropzone/ngx-dropzone.component';
 export * from './lib/ngx-dropzone-preview/ngx-dropzone-preview.component';

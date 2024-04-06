@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 @Component({
   selector: 'ngx-dropzone-remove-badge',
@@ -8,6 +8,8 @@ import { Component } from '@angular/core';
       <line x1="0" y1="10" x2="10" y2="0" />
     </svg>
   `,
-  styleUrls: ['./ngx-dropzone-remove-badge.component.scss']
+  styleUrls: ['./ngx-dropzone-remove-badge.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
 })
-export class NgxDropzoneRemoveBadgeComponent { }
+export class NgxDropzoneRemoveBadgeComponent {}

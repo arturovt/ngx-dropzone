@@ -1,18 +1,16 @@
 import { Injectable } from '@angular/core';
 
 export interface FileSelectResult {
+  /** The added files, emitted in the filesAdded event. */
+  addedFiles: File[];
 
-	/** The added files, emitted in the filesAdded event. */
-	addedFiles: File[];
-
-	/** The rejected files, emitted in the filesRejected event. */
-	rejectedFiles: RejectedFile[];
+  /** The rejected files, emitted in the filesRejected event. */
+  rejectedFiles: RejectedFile[];
 }
 
 export interface RejectedFile extends File {
-
-	/** The reason the file was rejected. */
-	reason?: RejectReason;
+  /** The reason the file was rejected. */
+  reason?: RejectReason;
 }
 
 export type RejectReason = 'type' | 'size' | 'no_multiple';
@@ -23,77 +21,83 @@ export type RejectReason = 'type' | 'size' | 'no_multiple';
  * like maximum size or accept type, it will be emitted in the
  * addedFiles array, otherwise in the rejectedFiles array.
  */
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class NgxDropzoneService {
+  parseFileList(
+    files: FileList,
+    accept: string,
+    maxFileSize: number,
+    multiple: boolean
+  ): FileSelectResult {
+    const addedFiles: File[] = [];
+    const rejectedFiles: RejectedFile[] = [];
 
-	parseFileList(files: FileList, accept: string, maxFileSize: number, multiple: boolean): FileSelectResult {
+    for (let i = 0; i < files.length; i++) {
+      const file = files.item(i)!;
 
-		const addedFiles: File[] = [];
-		const rejectedFiles: RejectedFile[] = [];
+      if (!this.isAccepted(file, accept)) {
+        this.rejectFile(rejectedFiles, file, 'type');
+        continue;
+      }
 
-		for (let i = 0; i < files.length; i++) {
-			const file = files.item(i);
+      if (maxFileSize && file.size > maxFileSize) {
+        this.rejectFile(rejectedFiles, file, 'size');
+        continue;
+      }
 
-			if (!this.isAccepted(file, accept)) {
-				this.rejectFile(rejectedFiles, file, 'type');
-				continue;
-			}
+      if (!multiple && addedFiles.length >= 1) {
+        this.rejectFile(rejectedFiles, file, 'no_multiple');
+        continue;
+      }
 
-			if (maxFileSize && file.size > maxFileSize) {
-				this.rejectFile(rejectedFiles, file, 'size');
-				continue;
-			}
+      addedFiles.push(file);
+    }
 
-			if (!multiple && addedFiles.length >= 1) {
-				this.rejectFile(rejectedFiles, file, 'no_multiple');
-				continue;
-			}
+    const result: FileSelectResult = {
+      addedFiles,
+      rejectedFiles,
+    };
 
-			addedFiles.push(file);
-		}
+    return result;
+  }
 
-		const result: FileSelectResult = {
-			addedFiles,
-			rejectedFiles
-		};
+  private isAccepted(file: File, accept: string): boolean {
+    if (accept === '*') {
+      return true;
+    }
 
-		return result;
-	}
+    const acceptFiletypes = accept
+      .split(',')
+      .map((it) => it.toLowerCase().trim());
+    const filetype = file.type.toLowerCase();
+    const filename = file.name.toLowerCase();
 
-	private isAccepted(file: File, accept: string): boolean {
+    const matchedFileType = acceptFiletypes.find((acceptFiletype) => {
+      // check for wildcard mimetype (e.g. image/*)
+      if (acceptFiletype.endsWith('/*')) {
+        return filetype.split('/')[0] === acceptFiletype.split('/')[0];
+      }
 
-		if (accept === '*') {
-			return true;
-		}
+      // check for file extension (e.g. .csv)
+      if (acceptFiletype.startsWith('.')) {
+        return filename.endsWith(acceptFiletype);
+      }
 
-		const acceptFiletypes = accept.split(',').map(it => it.toLowerCase().trim());
-		const filetype = file.type.toLowerCase();
-		const filename = file.name.toLowerCase();
+      // check for exact mimetype match (e.g. image/jpeg)
+      return acceptFiletype == filetype;
+    });
 
-		const matchedFileType = acceptFiletypes.find(acceptFiletype => {
+    return !!matchedFileType;
+  }
 
-			// check for wildcard mimetype (e.g. image/*)
-			if (acceptFiletype.endsWith('/*')) {
-				return filetype.split('/')[0] === acceptFiletype.split('/')[0];
-			}
+  private rejectFile(
+    rejectedFiles: RejectedFile[],
+    file: File,
+    reason: RejectReason
+  ) {
+    const rejectedFile = file as RejectedFile;
+    rejectedFile.reason = reason;
 
-			// check for file extension (e.g. .csv)
-			if (acceptFiletype.startsWith(".")) {
-				return filename.endsWith(acceptFiletype);
-			}
-
-			// check for exact mimetype match (e.g. image/jpeg)
-			return acceptFiletype == filetype;
-		});
-
-		return !!matchedFileType;
-	}
-
-	private rejectFile(rejectedFiles: RejectedFile[], file: File, reason: RejectReason) {
-
-		const rejectedFile = file as RejectedFile;
-		rejectedFile.reason = reason;
-
-		rejectedFiles.push(rejectedFile);
-	}
+    rejectedFiles.push(rejectedFile);
+  }
 }

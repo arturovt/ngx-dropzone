@@ -1,63 +1,66 @@
-import { Component, Input, Output, EventEmitter, HostBinding, HostListener } from '@angular/core';
-import { coerceBooleanProperty } from '../helpers';
-import { SafeStyle, DomSanitizer } from '@angular/platform-browser';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostBinding,
+  HostListener,
+  inject,
+  input,
+  NgZone,
+  output,
+} from '@angular/core';
+import { DomSanitizer, SafeStyle } from '@angular/platform-browser';
+import { fromEvent, Observable, Subscription } from 'rxjs';
 
-enum KEY_CODE {
-	BACKSPACE = 8,
-	DELETE = 46
+import { coerceBooleanProperty } from '../helpers';
+
+import { NgxDropzoneRemoveBadgeComponent } from './ngx-dropzone-remove-badge/ngx-dropzone-remove-badge.component';
+
+const enum KeyCode {
+  Backspace = 8,
+  Delete = 46,
 }
 
+declare const ngDevMode: boolean;
+
+const NG_DEV_MODE = typeof ngDevMode !== 'undefined' && ngDevMode;
+
 @Component({
-	selector: 'ngx-dropzone-preview',
-	template: `
-		<ng-content select="ngx-dropzone-label"></ng-content>
-		<ngx-dropzone-remove-badge *ngIf="removable" (click)="_remove($event)">
-		</ngx-dropzone-remove-badge>
-	`,
-	styleUrls: ['./ngx-dropzone-preview.component.scss']
+  selector: 'ngx-dropzone-preview',
+  template: `
+    <ng-content select="ngx-dropzone-label"></ng-content>
+    @if (removable()) {
+      <ngx-dropzone-remove-badge (click)="_remove($event)" />
+    }
+  `,
+  styleUrls: ['./ngx-dropzone-preview.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
+  imports: [NgxDropzoneRemoveBadgeComponent],
 })
 export class NgxDropzonePreviewComponent {
+  /** The file to preview. */
+  readonly file = input<File>();
 
-	constructor(
-		protected sanitizer: DomSanitizer
-	) { }
+  /** Allow the user to remove files. */
+  readonly removable = input(false, { transform: coerceBooleanProperty });
 
-	protected _file: File;
+  /** Emitted when the element should be removed. */
+  readonly removed = output<File>();
 
-	/** The file to preview. */
-	@Input()
-	set file(value: File) { this._file = value; }
-	get file(): File { return this._file; }
+  protected _ngZone = inject(NgZone);
+  protected _sanitizer = inject(DomSanitizer);
 
-	/** Allow the user to remove files. */
-	@Input()
-	get removable(): boolean {
-		return this._removable;
-	}
-	set removable(value: boolean) {
-		this._removable = coerceBooleanProperty(value);
-	}
-	protected _removable = false;
+  @HostListener('keyup', ['$event'])
+  keyEvent({ keyCode }: KeyboardEvent) {
+    if (keyCode === KeyCode.Backspace || keyCode === KeyCode.Delete) {
+      this.remove();
+    }
+  }
 
-	/** Emitted when the element should be removed. */
-	@Output() readonly removed = new EventEmitter<File>();
-
-	@HostListener('keyup', ['$event'])
-	keyEvent(event: KeyboardEvent) {
-		switch (event.keyCode) {
-			case KEY_CODE.BACKSPACE:
-			case KEY_CODE.DELETE:
-				this.remove();
-				break;
-			default:
-				break;
-		}
-	}
-
-	/** We use the HostBinding to pass these common styles to child components. */
-	@HostBinding('style')
-	get hostStyle(): SafeStyle {
-		const styles = `
+  /** We use the HostBinding to pass these common styles to child components. */
+  @HostBinding('style')
+  get hostStyle(): SafeStyle {
+    const styles = `
 			display: flex;
 			height: 140px;
 			min-height: 140px;
@@ -71,43 +74,61 @@ export class NgxDropzonePreviewComponent {
 			position: relative;
 		`;
 
-		return this.sanitizer.bypassSecurityTrustStyle(styles);
-	}
+    return this._sanitizer.bypassSecurityTrustStyle(styles);
+  }
 
-	/** Make the preview item focusable using the tab key. */
-	@HostBinding('tabindex') tabIndex = 0;
+  /** Make the preview item focusable using the tab key. */
+  @HostBinding('tabindex') tabIndex = 0;
 
-	/** Remove method to be used from the template. */
-	_remove(event) {
-		event.stopPropagation();
-		this.remove();
-	}
+  /** Remove method to be used from the template. */
+  _remove(event: MouseEvent): void {
+    event.stopPropagation();
+    this.remove();
+  }
 
-	/** Remove the preview item (use from component code). */
-	remove() {
-		if (this._removable) {
-			this.removed.next(this.file);
-		}
-	}
+  /** Remove the preview item (use from component code). */
+  remove(): void {
+    if (this.removable()) {
+      this.removed.emit(this.file()!);
+    }
+  }
 
-	protected async readFile(): Promise<string | ArrayBuffer> {
-		return new Promise<string | ArrayBuffer>((resolve, reject) => {
-			const reader = new FileReader();
+  protected _readFile(file: File | undefined) {
+    return new Observable<string | ArrayBuffer>((subscriber) => {
+      if (!file) {
+        subscriber.error(
+          'No file to read. Please provide a file using the [file] Input property.'
+        );
 
-			reader.onload = e => {
-				resolve((e.target as FileReader).result);
-			};
+        return;
+      }
 
-			reader.onerror = e => {
-				console.error(`FileReader failed on file ${this.file.name}.`);
-				reject(e);
-			};
+      const reader = new FileReader();
 
-			if (!this.file) {
-				return reject('No file to read. Please provide a file using the [file] Input property.');
-			}
+      const subscription = new Subscription();
 
-			reader.readAsDataURL(this.file);
-		});
-	}
+      this._ngZone.runOutsideAngular(() => {
+        subscription.add(
+          fromEvent(reader, 'load').subscribe(() => {
+            subscriber.next(reader.result!);
+            subscriber.complete();
+          })
+        );
+
+        subscription.add(
+          fromEvent(reader, 'error').subscribe((error) => {
+            if (NG_DEV_MODE) {
+              console.error(`FileReader failed on file ${this.file.name}.`);
+            }
+
+            subscriber.error(error);
+          })
+        );
+      });
+
+      reader.readAsDataURL(file);
+
+      return subscription;
+    });
+  }
 }
