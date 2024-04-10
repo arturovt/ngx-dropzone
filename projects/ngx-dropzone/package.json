@@ -1,8 +1,7 @@
 {
-  "name": "ngx-dropzone",
+  "name": "ngx-dropzone-next",
   "description": "A highly configurable dropzone component for Angular.",
-  "version": "3.1.0",
-  "author": "Peter Freeman",
+  "version": "17.0.0",
   "keywords": [
     "angular",
     "angular 2",
@@ -16,12 +15,12 @@
     "image"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/peterfreeman/ngx-dropzone",
+  "homepage": "https://github.com/arturovt/ngx-dropzone",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peterfreeman/ngx-dropzone.git"
+    "url": "git+https://github.com/arturovt/ngx-dropzone.git"
   },
   "bugs": {
-    "url": "https://github.com/peterfreeman/ngx-dropzone/issues"
+    "url": "https://github.com/arturovt/ngx-dropzone/issues"
   }
 }
