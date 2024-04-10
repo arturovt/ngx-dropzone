@@ -1,5 +1,3 @@
-import { Observable } from 'rxjs';
-
 /**
  * Coerces a data-bound value (typically a string) to a boolean.
  * Taken from https://github.com/angular/components/blob/main/src/cdk/coercion/boolean-property.ts
@@ -12,10 +10,8 @@ export function coerceBooleanProperty(value: any): boolean {
  * Whether the provided value is considered a number.
  * Taken from https://github.com/angular/components/blob/main/src/cdk/coercion/number-property.ts
  */
-export function coerceNumberProperty(value: any): number;
-export function coerceNumberProperty<D>(value: any, fallback: D): number | D;
-export function coerceNumberProperty(value: any, fallbackValue = 0) {
-  return _isNumberValue(value) ? Number(value) : fallbackValue;
+export function coerceNumberProperty(value: any) {
+  return _isNumberValue(value) ? Number(value) : 0;
 }
 
 /**

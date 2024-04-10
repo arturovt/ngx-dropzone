@@ -69,7 +69,7 @@ export class NgxDropzoneComponent implements OnChanges {
   readonly multiple = input(true, { transform: coerceBooleanProperty });
 
   /** Set the maximum size a single file may have. */
-  readonly maxFileSize = input<number, string>(0, {
+  readonly maxFileSize = input(0, {
     transform: coerceNumberProperty,
   });
 

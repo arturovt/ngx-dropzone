@@ -6,7 +6,6 @@ import {
   NgxDropzonePreviewComponent,
   NgxDropzoneVideoPreviewComponent,
 } from 'ngx-dropzone';
-import { NgFor, NgIf } from '@angular/common';
 import { Component, signal } from '@angular/core';
 
 @Component({
@@ -15,9 +14,6 @@ import { Component, signal } from '@angular/core';
   styleUrls: ['./app.component.scss'],
   standalone: true,
   imports: [
-    NgIf,
-    NgFor,
-
     NgxDropzoneComponent,
     NgxDropzoneLabelDirective,
     NgxDropzonePreviewComponent,
@@ -26,6 +22,8 @@ import { Component, signal } from '@angular/core';
   ],
 })
 export class AppComponent {
+  readonly maxFileSize = 1e9; // 1 Gb
+
   readonly files = signal<File[]>([]);
 
   onFilesAdded(event: NgxDropzoneChangeEvent) {
