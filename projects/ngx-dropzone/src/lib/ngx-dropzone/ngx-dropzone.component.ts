@@ -172,84 +172,86 @@ export class NgxDropzoneComponent implements OnChanges {
         this._isHovered.set(false);
       });
 
-    unpatchedFromEvent<DragEvent>(nativeElement, 'drop').subscribe((event) => {
-      if (this.disabled()) {
-        return;
-      }
-
-      this._preventDefault(event);
-      this._isHovered.set(false);
-
-      // If `processDirectoryDrop` is not enabled or `webkitGetAsEntry` is not
-      // supported, we handle the drop as usual.
-      if (
-        !this.processDirectoryDrop ||
-        !DataTransferItem.prototype.webkitGetAsEntry
-      ) {
-        this._handleFileDrop(event.dataTransfer!.files);
-        return;
-      }
-
-      const droppedItems: DataTransferItemList = event.dataTransfer!.items;
-
-      if (droppedItems.length === 0) {
-        return;
-      }
-
-      const droppedFiles: File[] = [];
-      const droppedDirectories: FileSystemDirectoryEntry[] = [];
-
-      // Separate dropped files from dropped directories for easier handling.
-      for (let i = 0; i < droppedItems.length; i++) {
-        const entry = droppedItems[i].webkitGetAsEntry();
-        if (!entry) continue;
-        if (entry.isFile) {
-          droppedFiles.push(event.dataTransfer!.files[i]);
-        } else if (entry.isDirectory) {
-          droppedDirectories.push(<FileSystemDirectoryEntry>entry);
+    unpatchedFromEvent<DragEvent>(nativeElement, 'drop')
+      .pipe(takeUntilDestroyed())
+      .subscribe((event) => {
+        if (this.disabled()) {
+          return;
         }
-      }
 
-      // Create a DataTransfer
-      const droppedFilesList = new DataTransfer();
-      droppedFiles.forEach((droppedFile) =>
-        droppedFilesList.items.add(droppedFile)
-      );
+        this._preventDefault(event);
+        this._isHovered.set(false);
 
-      const noDroppedDirectories = droppedDirectories.length === 0;
+        // If `processDirectoryDrop` is not enabled or `webkitGetAsEntry` is not
+        // supported, we handle the drop as usual.
+        if (
+          !this.processDirectoryDrop ||
+          !globalThis.DataTransferItem?.prototype.webkitGetAsEntry
+        ) {
+          this._handleFileDrop(event.dataTransfer!.files);
+          return;
+        }
 
-      // If no directory is dropped we are done and can call handleFileDrop
-      if (noDroppedDirectories && droppedFilesList.items.length) {
-        this._handleFileDrop(droppedFilesList.files);
-      }
+        const droppedItems: DataTransferItemList = event.dataTransfer!.items;
 
-      if (noDroppedDirectories) {
-        return;
-      }
+        if (droppedItems.length === 0) {
+          return;
+        }
 
-      // if directories are dropped we extract the files from these directories
-      // one-by-one and add it to droppedFilesList.
-      const extractFilesFromDirectoryCalls: Promise<unknown>[] = [];
+        const droppedFiles: File[] = [];
+        const droppedDirectories: FileSystemDirectoryEntry[] = [];
 
-      for (const droppedDirectory of droppedDirectories) {
-        extractFilesFromDirectoryCalls.push(
-          extractFilesFromDirectory(droppedDirectory)
+        // Separate dropped files from dropped directories for easier handling.
+        for (let i = 0; i < droppedItems.length; i++) {
+          const entry = droppedItems[i].webkitGetAsEntry();
+          if (!entry) continue;
+          if (entry.isFile) {
+            droppedFiles.push(event.dataTransfer!.files[i]);
+          } else if (entry.isDirectory) {
+            droppedDirectories.push(<FileSystemDirectoryEntry>entry);
+          }
+        }
+
+        // Create a DataTransfer
+        const droppedFilesList = new DataTransfer();
+        droppedFiles.forEach((droppedFile) =>
+          droppedFilesList.items.add(droppedFile)
         );
-      }
 
-      // wait for all directories to be proccessed to add the extracted files afterwards
-      Promise.all(extractFilesFromDirectoryCalls).then(
-        (allExtractedFiles: any[]) => {
-          allExtractedFiles
-            .reduce((a, b) => [...a, ...b])
-            .forEach((extractedFile: File) => {
-              droppedFilesList.items.add(extractedFile);
-            });
+        const noDroppedDirectories = droppedDirectories.length === 0;
 
+        // If no directory is dropped we are done and can call handleFileDrop
+        if (noDroppedDirectories && droppedFilesList.items.length) {
           this._handleFileDrop(droppedFilesList.files);
         }
-      );
-    });
+
+        if (noDroppedDirectories) {
+          return;
+        }
+
+        // if directories are dropped we extract the files from these directories
+        // one-by-one and add it to droppedFilesList.
+        const extractFilesFromDirectoryCalls: Promise<unknown>[] = [];
+
+        for (const droppedDirectory of droppedDirectories) {
+          extractFilesFromDirectoryCalls.push(
+            extractFilesFromDirectory(droppedDirectory)
+          );
+        }
+
+        // wait for all directories to be proccessed to add the extracted files afterwards
+        Promise.all(extractFilesFromDirectoryCalls).then(
+          (allExtractedFiles: any[]) => {
+            allExtractedFiles
+              .reduce((a, b) => [...a, ...b])
+              .forEach((extractedFile: File) => {
+                droppedFilesList.items.add(extractedFile);
+              });
+
+            this._handleFileDrop(droppedFilesList.files);
+          }
+        );
+      });
   }
 }
 
