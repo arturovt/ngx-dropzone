@@ -6,7 +6,6 @@ import {
   ElementRef,
   inject,
   input,
-  NgZone,
   OnChanges,
   output,
   signal,
@@ -14,11 +13,11 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { fromEvent } from 'rxjs';
 
-import { coerceBooleanProperty, coerceNumberProperty } from '../helpers';
+import { coerceBooleanProperty, coerceNumberProperty } from '../coercion';
 import { NgxDropzonePreviewComponent } from '../ngx-dropzone-preview/ngx-dropzone-preview.component';
 import { NgxDropzoneService, RejectedFile } from '../ngx-dropzone.service';
+import { isPlatformBrowser, unpatchedFromEvent } from '../utils';
 
 declare const ngDevMode: boolean;
 
@@ -94,7 +93,9 @@ export class NgxDropzoneComponent implements OnChanges {
   readonly _isHovered = signal(false);
 
   constructor() {
-    inject(NgZone).runOutsideAngular(() => this._setupEventListeners());
+    if (isPlatformBrowser()) {
+      this._setupEventListeners();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -146,7 +147,7 @@ export class NgxDropzoneComponent implements OnChanges {
     const { nativeElement } = inject(ElementRef);
 
     /** Show the native OS file explorer to select files. */
-    fromEvent(nativeElement, 'click')
+    unpatchedFromEvent(nativeElement, 'click')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         if (!this.disableClick()) {
@@ -154,7 +155,7 @@ export class NgxDropzoneComponent implements OnChanges {
         }
       });
 
-    fromEvent<DragEvent>(nativeElement, 'dragover')
+    unpatchedFromEvent<DragEvent>(nativeElement, 'dragover')
       .pipe(takeUntilDestroyed())
       .subscribe((event) => {
         if (this.disabled()) {
@@ -165,13 +166,13 @@ export class NgxDropzoneComponent implements OnChanges {
         this._isHovered.set(true);
       });
 
-    fromEvent(nativeElement, 'dragleave')
+    unpatchedFromEvent(nativeElement, 'dragleave')
       .pipe(takeUntilDestroyed())
       .subscribe(() => {
         this._isHovered.set(false);
       });
 
-    fromEvent<DragEvent>(nativeElement, 'drop').subscribe((event) => {
+    unpatchedFromEvent<DragEvent>(nativeElement, 'drop').subscribe((event) => {
       if (this.disabled()) {
         return;
       }

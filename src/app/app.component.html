@@ -10,7 +10,7 @@ Default
 >
   <ngx-dropzone-label>Drop it, baby!</ngx-dropzone-label>
   <ngx-dropzone-preview
-    *ngFor="let f of files"
+    *ngFor="let f of files()"
     [removable]="true"
     (removed)="onRemove(f)"
   >
@@ -25,7 +25,7 @@ Default
     >Drop your directories in here, to see the magic happen!</ngx-dropzone-label
   >
   <ngx-dropzone-preview
-    *ngFor="let f of files"
+    *ngFor="let f of files()"
     [removable]="true"
     (removed)="onRemove(f)"
   >
@@ -40,7 +40,7 @@ Default
 >
   <ngx-dropzone-label>Drop it like it's hot!</ngx-dropzone-label>
   <ngx-dropzone-preview
-    *ngFor="let f of files"
+    *ngFor="let f of files()"
     [removable]="true"
     (removed)="onRemove(f)"
   >
@@ -55,7 +55,7 @@ Default
 >
   <ngx-dropzone-label>Drop it like it's hott!</ngx-dropzone-label>
   <ngx-dropzone-preview
-    *ngFor="let f of files"
+    *ngFor="let f of files()"
     [removable]="true"
     (removed)="onRemove(f)"
   >

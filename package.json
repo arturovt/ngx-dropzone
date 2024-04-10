@@ -4,11 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
-    "test": "ng test",
-    "lint": "ng lint",
-    "e2e": "ng e2e",
-    "release": "cd projects/ngx-dropzone && npm version minor && cd ../.. && ng build --prod ngx-dropzone && cp README.md dist/ngx-dropzone/ && cd dist/ngx-dropzone && npm publish"
+    "build": "ng build ngx-dropzone -c production",
+    "postbuild": "cp README.md ./dist/ngx-dropzone",
+    "test": "ng test"
   },
   "private": true,
   "dependencies": {

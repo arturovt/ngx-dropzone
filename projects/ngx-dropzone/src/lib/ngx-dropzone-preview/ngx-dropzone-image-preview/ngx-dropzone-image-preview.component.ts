@@ -5,12 +5,12 @@ import {
   effect,
   inject,
   input,
-  OnInit,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SafeUrl } from '@angular/platform-browser';
 
+import { isPlatformBrowser } from '../../utils';
 import { NgxDropzonePreviewComponent } from '../ngx-dropzone-preview.component';
 import { NgxDropzoneRemoveBadgeComponent } from '../ngx-dropzone-remove-badge/ngx-dropzone-remove-badge.component';
 
@@ -36,10 +36,7 @@ import { NgxDropzoneRemoveBadgeComponent } from '../ngx-dropzone-remove-badge/ng
     },
   ],
 })
-export class NgxDropzoneImagePreviewComponent
-  extends NgxDropzonePreviewComponent
-  implements OnInit
-{
+export class NgxDropzoneImagePreviewComponent extends NgxDropzonePreviewComponent {
   /** The file to preview. */
   override readonly file = input<File>();
 
@@ -56,11 +53,9 @@ export class NgxDropzoneImagePreviewComponent
   constructor() {
     super();
 
-    effect(() => this._renderImage(this.file()));
-  }
-
-  ngOnInit(): void {
-    this._renderImage(this.file());
+    if (isPlatformBrowser()) {
+      effect(() => this._renderImage(this.file()));
+    }
   }
 
   private _renderImage(file: File | undefined): void {

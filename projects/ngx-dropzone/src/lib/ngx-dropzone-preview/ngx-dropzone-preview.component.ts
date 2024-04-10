@@ -1,17 +1,18 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   HostBinding,
-  HostListener,
   inject,
   input,
-  NgZone,
   output,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeStyle } from '@angular/platform-browser';
-import { fromEvent, Observable, Subscription } from 'rxjs';
+import { Observable, race } from 'rxjs';
 
-import { coerceBooleanProperty } from '../helpers';
+import { coerceBooleanProperty } from '../coercion';
+import { isPlatformBrowser, unpatchedFromEvent } from '../utils';
 
 import { NgxDropzoneRemoveBadgeComponent } from './ngx-dropzone-remove-badge/ngx-dropzone-remove-badge.component';
 
@@ -47,13 +48,19 @@ export class NgxDropzonePreviewComponent {
   /** Emitted when the element should be removed. */
   readonly removed = output<File>();
 
-  protected _ngZone = inject(NgZone);
   protected _sanitizer = inject(DomSanitizer);
 
-  @HostListener('keyup', ['$event'])
-  keyEvent({ keyCode }: KeyboardEvent) {
-    if (keyCode === KeyCode.Backspace || keyCode === KeyCode.Delete) {
-      this.remove();
+  constructor() {
+    if (isPlatformBrowser()) {
+      const { nativeElement } = inject(ElementRef);
+
+      unpatchedFromEvent<KeyboardEvent>(nativeElement, 'keyup')
+        .pipe(takeUntilDestroyed())
+        .subscribe(({ keyCode }) => {
+          if (keyCode === KeyCode.Backspace || keyCode === KeyCode.Delete) {
+            this.remove();
+          }
+        });
     }
   }
 
@@ -105,25 +112,20 @@ export class NgxDropzonePreviewComponent {
 
       const reader = new FileReader();
 
-      const subscription = new Subscription();
+      const subscription = race(
+        unpatchedFromEvent(reader, 'load'),
+        unpatchedFromEvent(reader, 'error')
+      ).subscribe((event) => {
+        if (event.type === 'load') {
+          subscriber.next(reader.result!);
+          subscriber.complete();
+        } else {
+          if (NG_DEV_MODE) {
+            console.error(`FileReader failed on file ${this.file.name}.`);
+          }
 
-      this._ngZone.runOutsideAngular(() => {
-        subscription.add(
-          fromEvent(reader, 'load').subscribe(() => {
-            subscriber.next(reader.result!);
-            subscriber.complete();
-          })
-        );
-
-        subscription.add(
-          fromEvent(reader, 'error').subscribe((error) => {
-            if (NG_DEV_MODE) {
-              console.error(`FileReader failed on file ${this.file.name}.`);
-            }
-
-            subscriber.error(error);
-          })
-        );
+          subscriber.error(event);
+        }
       });
 
       reader.readAsDataURL(file);
